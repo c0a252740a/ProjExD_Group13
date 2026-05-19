@@ -8,7 +8,7 @@ import pygame as pg
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
-backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg2.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
+backgroundImg = ["fig/pg_bg.jpg","fig/yougan.png","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -288,19 +288,147 @@ class Enemy(pg.sprite.Sprite):
         self.rect.move_ip(self.vx, self.vy)
 
 
+class Enemy4(pg.sprite.Sprite):
+    """
+    敵機に関するクラス
+    """
+    imgs = pg.image.load(f"fig/enemy_4.png")
+    imgs2 = pg.image.load(f"fig/moai.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.hp = 1
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
+class Enemy4_1(pg.sprite.Sprite):
+    """
+    敵機に関するクラス
+    """
+    imgs = pg.image.load(f"fig/moai.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.bottom = HEIGHT + 40  # 底面を少し下げる（以前の調整値）
+        self.rect.left = WIDTH
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(30, 300)  # 爆弾投下インターバル
+        self.hp = 3
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
+class Enemy4_boss(pg.sprite.Sprite):
+    """
+    4ステージ目のボスに関するクラス
+    """
+    imgs = pg.image.load(f"fig/dragon.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH - 300, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(30, 100)  # 爆弾投下インターバル
+        self.hp = 30
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
 def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     """
     ステージごとの条件に応じて敵機をスポーンさせる。
     現在はステージが上がるほど出現間隔を短くする。
     """
     interval = max(60, 200 - (stage - 1) * 20)
-    if stage == 1:
+    if stage == 2:
         if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
             emys.add(Enemy())
         # ここにステージごとのスポーン条件を追加していく
     # elif stage == 2:
         #     if tmr % 15
         #         emys.add(EnemyX())
+    elif stage == 1:
+        if tmr % interval == 0:
+            emys.add(Enemy4())
+        if tmr % 300 == 0:
+            emys.add(Enemy4_1())
+        if tmr % 1800 == 0 and tmr > 0:
+            emys.add(Enemy4_boss())
+
+
+class Full_beam:
+    """
+    複数方向に放つビームに関するクラス
+    """
+    def __init__(self, bird: Bird, num: int):
+        self.bird = bird
+        self.num = num
+
+    def gen_beams(self, bird: Bird):
+        """
+        ビームを全方向（360度）に等間隔で放つ
+        引数 bird：ビームを放つこうかとん
+        """
+        beams = []
+        
+        # 1本だけの場合は正面（0度）に撃つ
+        if self.num == 1:
+            angles = [0]
+        else:
+            # 360度を指定した本数(self.num)で等分割する
+            step = 360 / self.num
+            # 各ビームの角度を計算してリストにする（例: 4本なら [0.0, 90.0, 180.0, 270.0]）
+            angles = [step * i for i in range(self.num)]
+            
+        for i in range(self.num):
+            angle0 = angles[i]
+            beams.append(Beam(bird, angle0))
+            
+        return beams
+
 
 class Score:
     """
@@ -353,7 +481,7 @@ def main():
     bg_imgs = [pg.image.load(path).convert() for path in backgroundImg]
     score = Score()
 
-    bird = Bird(3, (900, 400))
+    bird = Bird(3, (400, 400))
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
@@ -375,7 +503,7 @@ def main():
             if event.type == pg.QUIT:
                 return 0
 
-            if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_q:
+            if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_1:
                 life.num = min(life.num + 1, 5)
                 score.value += 50
                 stage += 1
@@ -395,6 +523,8 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 if event.mod & pg.KMOD_LSHIFT: #発動条件：左Shiftキーを押下しながらスペースキー
                     beams.add(*NeoBeam(bird, 5).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
+                elif event.mod & pg.KMOD_RSHIFT:
+                    beams.add(*Full_beam(bird, 5).gen_beams(bird))
                 else:
                     beams.add(Beam(bird))  # スペースキーでビームを放つ
 
@@ -407,15 +537,34 @@ def main():
             overlay = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             screen.blit(overlay, (0, 0))
+            
             font = pg.font.Font(None, 54)
+            font_sub = pg.font.Font(None, 40)
+            
+            # --- 変更点1：テキスト表示の変更 ---
             lines = [
                 f"STAGE {stage} CLEAR",
-                "Press Q to heal and go next stage",
+                "Select 1 Skill to Upgrade!",
             ]
             for i, text in enumerate(lines):
                 img = font.render(text, True, (255, 255, 255))
-                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 30 + i * 50))
+                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 150 + i * 50))
                 screen.blit(img, rect)
+            
+            # --- 変更点2：3つのスキル選択肢を表示 ---
+            # 今は1つしか完成していないので、2つ目と3つ目はダミー（準備中）にします
+            skills = [
+                "[ 1 ]  Full Beam (Omnidirectional)",  # 完成しているスキル
+                "[ 2 ]  Speed Up (Coming Soon)",       # 未完成のダミー
+                "[ 3 ]  Max HP Up (Coming Soon)",      # 未完成のダミー
+            ]
+            for i, skill_text in enumerate(skills):
+                # 完成している1番だけ色を変える（例：黄色）と分かりやすいです
+                color = (255, 215, 0) if i == 0 else (150, 150, 150)
+                img = font_sub.render(skill_text, True, color)
+                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+                screen.blit(img, rect)
+
             pg.display.update()
             clock.tick(30)
             continue
@@ -461,6 +610,8 @@ def main():
                 return
 
         for obj in emys:
+            if isinstance(obj, Enemy4_boss):
+                continue
             obj.rect.x -= scroll
         for obj in bombs:
             obj.rect.x -= scroll
@@ -502,9 +653,14 @@ def main():
                     if life.num<1:
                         time.sleep(2)
                         return
+                    
+        if emy.hp <= 0:
+            # 敵が倒されたとき、それがボス（Enemy4_boss）だった場合
+            if isinstance(emy, Enemy4_boss):
+                stage_clear = True  # ステージクリアフラグをONにする
         
-        if tmr % 1800 == 0 and tmr > 0:
-            stage_clear = True
+        # if tmr % 1800 == 0 and tmr > 0:
+        #     stage_clear = True
 
         bird.update(key_lst, screen, score)
         beams.update()
