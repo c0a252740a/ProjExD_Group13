@@ -45,10 +45,10 @@ class Bird(pg.sprite.Sprite):
     invincible_life = 0  # 無敵時間のタイマー
 
     delta = {  # 押下キーと移動量の辞書
-        pg.K_UP: (0, -1),
-        pg.K_DOWN: (0, +1),
-        pg.K_LEFT: (-1, 0),
-        pg.K_RIGHT: (+1, 0),
+        pg.K_w: (0, -1),
+        pg.K_s: (0, +1),
+        pg.K_a: (-1, 0),
+        pg.K_d: (+1, 0),
     }
 
     def __init__(self, num: int, xy: tuple[int, int]):
@@ -59,22 +59,12 @@ class Bird(pg.sprite.Sprite):
         """
         super().__init__()
         img0 = pg.transform.rotozoom(pg.image.load(f"fig/{num}.png"), 0, 0.9)
-        img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
-        self.imgs = {
-            (+1, 0): img,  # 右
-            (+1, -1): pg.transform.rotozoom(img, 45, 0.9),  # 右上
-            (0, -1): pg.transform.rotozoom(img, 90, 0.9),  # 上
-            (-1, -1): pg.transform.rotozoom(img0, -45, 0.9),  # 左上
-            (-1, 0): img0,  # 左
-            (-1, +1): pg.transform.rotozoom(img0, 45, 0.9),  # 左下
-            (0, +1): pg.transform.rotozoom(img, -90, 0.9),  # 下
-            (+1, +1): pg.transform.rotozoom(img, -45, 0.9),  # 右下
-        }
-        self.dire = (+1, 0)
-        self.image = self.imgs[self.dire]
+        self.base_image = pg.transform.flip(img0, True, False)
+        self.image = self.base_image
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.dire = (+1, 0)
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -99,9 +89,6 @@ class Bird(pg.sprite.Sprite):
         self.rect.move_ip(self.speed*sum_mv[0], self.speed*sum_mv[1])
         if check_bound(self.rect) != (True, True):
             self.rect.move_ip(-self.speed*sum_mv[0], -self.speed*sum_mv[1])
-        if not (sum_mv[0] == 0 and sum_mv[1] == 0):
-            self.dire = tuple(sum_mv)
-            self.image = self.imgs[self.dire]
 
         if key_lst[pg.K_RSHIFT] and score.value >= 100:# 無敵化の起動
             score.value -= 100
@@ -114,7 +101,7 @@ class Bird(pg.sprite.Sprite):
                 self.image = pg.transform.laplacian(self.image)
             else:
                 self.state = "normal"
-                self.image = self.imgs[self.dire]
+                self.image = self.base_image
 
         screen.blit(self.image, self.rect)
         
