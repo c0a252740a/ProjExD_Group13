@@ -4,11 +4,18 @@ import random
 import sys
 import time
 import pygame as pg
+
 import random
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
 backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg2.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.png"] #1,2,3,4,5
+
+pg.mixer.init()
+
+WIDTH = 1100  # ゲームウィンドウの幅
+HEIGHT = 650  # ゲームウィンドウの高さ
+backgroundImg = ["fig/pg_bg.jpg","fig/nightsky01.png","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -300,7 +307,7 @@ class Enemy(pg.sprite.Sprite):
             self.vx = 0
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
-
+        
 class EnemyLV5_A(pg.sprite.Sprite):
     """
     敵機に関するクラス
@@ -384,6 +391,7 @@ class EnemyLV5_Boss(pg.sprite.Sprite):
             self.vx = 0
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
+
 class LV1_Boss(pg.sprite.Sprite):
     """
     ステージ1のボスに関するクラス
@@ -416,8 +424,67 @@ class LV1_Boss(pg.sprite.Sprite):
         else:
             self.vy = 0
         self.rect.move_ip(self.vx, self.vy)
+class Enemy2(pg.sprite.Sprite):
+    """
+    ステージ2の敵機に関するクラス
+    """
+    imgs = [pg.image.load(f"fig/ufo_0{i}.png") for i in range(1, 4)]
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(random.choice(__class__.imgs), 0, 0.2)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.vx, self.vy = random.randint(-6, -1), random.randint(-1, 1)
+        self.change_dir_timer = random.randint(20, 50)
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(20, 60)  # 爆弾投下インターバル
+        self.hp = 1
+    def update(self):
+        """
+        敵が上下の画面外に出ないようにする。
+        敵を不規則に動かす。
+        """
+        if self.rect.top < 0: #画面の上側に出そうになったとき押し戻す
+            self.rect.top = 0
+            self.vy *= -1
+        if self.rect.bottom > HEIGHT: #画面の下側に出そうになったとき押し戻す
+            self.rect.bottom= HEIGHT
+            self.vy *= -1
 
+        self.change_dir_timer -= 1 # 毎フレームタイマーを減らす
+        
+        # タイマーが0になったら、新しい速度をランダムに決めてタイマーをリセット
+        if self.change_dir_timer == 0:
+            self.vx = random.randint(-6, -1)
+            self.vy = random.randint(-4, +4)
+            self.change_dir_timer = random.randint(30, 60) # 次の方向転換までの時間
 
+        self.rect.move_ip(self.vx, self.vy) # 移動処理
+
+        if self.rect.right < 0: # 画面外（左端）に出たら消滅
+            self.kill()
+
+class Stage2_Boss(pg.sprite.Sprite):
+    """
+    ステージ2のボスに関するクラス
+    """
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(pg.image.load("fig/ufo_01.png"), 0, 0.4)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH - 100, HEIGHT // 2  #最初から右側に配置
+        self.vy = 4  #上下移動の速さ
+        self.hp = 10
+        self.interval = 50
+        self.state = "active"
+
+    def update(self):
+        self.rect.y += self.vy
+        #画面の上下で跳ね返る
+        if self.rect.top < 0 or self.rect.bottom > HEIGHT:
+            self.vy *= -1
 
 def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     """
@@ -448,10 +515,15 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
             #         emys.add(Enemy())
             # elif tmr == 500:            # タイマーがちょうど500になった瞬間にボスを1体だけ出す
             #     emys.add(LV1_Boss())        
-    # ここにステージごとのスポーン条件を追加していく
+        # ここにステージごとのスポーン条件を追加していく
     # elif stage == 2:
         #     if tmr % 15
         #         emys.add(EnemyX())
+        if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
+            emys.add(Enemy())
+    elif stage == 2:
+            if tmr % interval == 0:
+                emys.add(Enemy2())
 
 class Score:
     """
@@ -509,8 +581,15 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-    life = Life(3)
+    life = Life(5)
     items = pg.sprite.Group()
+
+    beam_sound = pg.mixer.Sound("fig/stage2_beam_sound.mp3")
+    beam_sound.set_volume(0.2)
+    exp_sound = pg.mixer.Sound("fig/stage2_explosion_sound.mp3")
+    exp_sound.set_volume(0.2)
+    emys = pg.sprite.Group()
+    boss = None
 
     stage = 1
     scroll = 2
@@ -527,14 +606,15 @@ def main():
     has_rapid_skill = False
 
     clock = pg.time.Clock()
-    pg.mixer.music.play(-1)
-    bgm_files = ["soundbgm1.mp3"] 
-    #ステージのBGMを再生
-    pg.mixer.music.load(bgm_files[0])
-    pg.mixer.music.play(-1)
-    pg.mixer.music.set_volume(0.5)  
 
-    while True:
+    pg.mixer.music.play(-1)
+    bgm_files = ["soundbgm1.mp3", "stage2_music.mp3"] 
+    #ステージのBGMを再生
+    pg.mixer.music.load(bgm_files[stage-1])
+    pg.mixer.music.play(-1)
+    pg.mixer.music.set_volume(0.7) 
+
+    while True: 
         key_lst = pg.key.get_pressed()
         if not stage_clear and has_rapid_skill and key_lst[pg.K_f] and score.value > 0:
             if tmr % 4 == 0:  # 4フレームに1発発射
@@ -551,6 +631,8 @@ def main():
                 life.num = min(life.num + 1, 5)
                 score.value += 50
                 stage += 1
+                tmr = 0
+
                 stage_clear = False
                 stage_title_life = 60
                 bird.rect.center = (900, 400)
@@ -560,6 +642,7 @@ def main():
                     item.rect.x -= 120
                 bg_x = 0
                 continue
+            
             if stage_clear and event.type == pg.KEYDOWN:
                 if event.key == pg.K_q:  # Qキーなら回復
                     life.num = min(life.num + 1, 5)
@@ -613,6 +696,8 @@ def main():
                 continue
 
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+                if stage == 2:
+                    beam_sound.play(maxtime=1000)
                 if event.mod & pg.KMOD_LSHIFT: #発動条件：左Shiftキーを押下しながらスペースキー
                     beams.add(*NeoBeam(bird, 5).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
                 else:
@@ -664,6 +749,7 @@ def main():
             stage_title_life -= 1
 
 
+
         spawn_enemy(stage, tmr, emys)
         if tmr == 500:
             scroll = 0
@@ -671,14 +757,43 @@ def main():
         if tmr%260 == 0:
             items.add(Item())
             
+        
+        if boss is None:
+           spawn_enemy(stage, tmr, emys)
+
+        if tmr%260 == 0:
+            items.add(Item())
+
+        if bird.rect.left <= 0:
+            stage_clear = True
+        
+        # tmrが500になったらボスを1体だけ生成
+        if stage == 2 and tmr == 500 and boss is None:
+            boss = Stage2_Boss()
+
+        # ボスが存在するときだけ、更新して描画
+        if boss:
+            boss.update()
+            screen.blit(boss.image, boss.rect)
+
+
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
+            
+            elif isinstance(emy, Enemy2):
+                if tmr % emy.interval == 0:
+                    bombs.add(Bomb(emy, bird))
+
+        if boss and tmr % boss.interval == 0:
+            bombs.add(Bomb(boss, bird))
 
         for emy in pg.sprite.spritecollide(bird, emys, False):
             emy.hp -= 1
             if emy.hp <= 0:
+                if stage == 2:
+                    exp_sound.play()
                 emys.remove(emy)
                 exps.add(Explosion(emy, 100))
                 score.value += 10
@@ -707,6 +822,8 @@ def main():
             obj.rect.x -= scroll
         for obj in items:
             obj.rect.x -= scroll
+        if boss:
+            pass
 
         for item in pg.sprite.spritecollide(bird, items, True):
             life.num = min(life.num + 1, 5)
@@ -716,9 +833,14 @@ def main():
             snd005exp.play()  # 爆発音を再生
             emy.hp -= 1
             if emy.hp <= 0:
+
                 if isinstance(emy, EnemyLV5_Boss):
                     score.value += 1000  # ボスを倒したら1000点アップ
                     stage_clear = True  # ボスを倒したらステージクリア
+
+                if stage == 2:
+                    exp_sound.play()
+
                 emys.remove(emy)
                 exps.add(Explosion(emy, 100))  # 爆発エフェクト
                 score.value += 10  # 10点アップ
@@ -736,6 +858,8 @@ def main():
             snd005exp.play()  # 爆発音を再生
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
+            if stage == 2:
+                exp_sound.play()
         
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
@@ -754,8 +878,27 @@ def main():
                     if life.num<1:
                         time.sleep(2)
                         return
+
+        # if tmr % 1800 == 0 and tmr > 0 and stage < 5: # 一定時間ごとにステージクリア
+        #     if boss and pg.sprite.spritecollide(boss, beams, True):
+        #         boss.hp -= 1
+        if boss: # ボスが存在するときは「常に」毎フレームチェック
+            hit_beams = pg.sprite.spritecollide(boss, beams, True)
+            if hit_beams:
+                for _ in hit_beams:
+                    boss.hp -= 1
+                exp_sound.play(maxtime=100)
+                if boss.hp <= 0:  
+                    exp_sound.play()               
+                    exps.add(Explosion(boss, 400)) # 爆発音
+                    boss = None  # ボス消滅
+                    stage_clear = True  
         
-        if tmr % 1800 == 0 and tmr > 0 and stage < 5: # 一定時間ごとにステージクリア
+        #if tmr % 1800 == 0 and tmr > 0:
+        if tmr % 1800 == 0 and tmr > 0 and stage < 5:
+            if stage != 2 or (stage == 2 and boss is None):
+                stage_clear = True
+
             stage_clear = True
         bird.update(key_lst, screen, score, stage)
         #if tmr % 1800 == 0 and tmr > 0:
