@@ -12,8 +12,7 @@ pg.mixer.init()
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
-backgroundImg = ["fig/pg_bg.jpg","fig/nightsky01.png","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.png"] #1,2,3,4,5
-backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.jpg"] #1,2,3,4,5
+backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.png"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -446,7 +445,7 @@ class EnemyLV5_Boss(pg.sprite.Sprite):
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
-        self.interval = random.randint(5, 140)  # 爆弾投下インターバル
+        self.interval = 30
         self.hp = 30
 
     def update(self):
@@ -474,7 +473,7 @@ class LV1_Boss(pg.sprite.Sprite):
             self.vx, self.vy = -3, 0
             self.bound = WIDTH - 200 #画面右側でストップ
             self.state = "left"  
-            self.interval = 40
+            self.interval = random.randint(20, 100)  # 爆弾投下インターバル
             self.hp = 5         #ボスの体力
             self.move_dir = 1     
             self.base_speed = 4
@@ -627,7 +626,7 @@ class Enemy4_boss(pg.sprite.Sprite):
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH - 300, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
-        self.interval = random.randint(60, 140)  # 爆弾投下インターバル
+        self.interval = 80
         self.hp = 30
 
     def update(self):
@@ -658,10 +657,10 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
         # ここにステージごとのスポーン条件を追加していく
     elif stage == 5:
         if not any(isinstance(enemy, EnemyLV5_Boss) for enemy in emys): # ステージ5ではBossが出現している間は他の敵機をスポーンさせない
-            if tmr % (interval/2) == 0:
+            if tmr % (interval/4) == 0:
                 emys.add(EnemyLV5_A())
-            if tmr % (interval * 2) == 0: # ステージ5ではさらに強い敵機を出現させる
-                for _ in range(1):
+            if tmr % (interval * 1.4) == 0: # ステージ5ではさらに強い敵機を出現させる
+                for _ in range(2):
                     emys.add(EnemyLV5_B())
         if tmr > 0 and tmr % (interval * 10) == 0: # ステージ5ではさらに強い敵機を出現させる
             emys.add(EnemyLV5_Boss())
@@ -675,8 +674,8 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     # elif stage == 2:
         #     if tmr % 15
         #         emys.add(EnemyX())
-        if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
-            emys.add(Enemy())
+        #if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
+        #    emys.add(Enemy())
     elif stage == 2:
             if tmr % interval == 0:
                 emys.add(Enemy2())
@@ -828,6 +827,8 @@ def main():
 
     beam_sound = pg.mixer.Sound("fig/stage2_beam_sound.mp3")
     beam_sound.set_volume(0.2)
+    laser_sound = pg.mixer.Sound("fig/laser.mp3")
+    laser_sound.set_volume(0.2)
     exp_sound = pg.mixer.Sound("fig/stage2_explosion_sound.mp3")
     exp_sound.set_volume(0.2)
     emys = pg.sprite.Group()
@@ -877,6 +878,7 @@ def main():
         key_lst = pg.key.get_pressed()
         if not stage_clear and has_rapid_skill and key_lst[pg.K_f] and score.value > 0:
             if tmr % 4 == 0:  # 4フレームに1発発射
+                laser_sound.play()
                 beams.add(Beam(bird, stage))
                 score.value -= 1  # スコアを1消費
                         
@@ -1013,6 +1015,7 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 if stage == 2:
                     beam_sound.play(maxtime=1000)
+                laser_sound.play()
                 if event.mod & pg.KMOD_LSHIFT: #発動条件：左Shiftキーを押下しながらスペースキー
                     beams.add(*NeoBeam(bird, neo_beam_num, stage).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
                 else:
@@ -1027,6 +1030,7 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_r:
                 # スキルを所持していて、かつクールダウンが0の場合のみ発動
                 if player_skills[1] and full_beam_cooldown == 0:
+                    laser_sound.play()
                     beams.add(*Full_beam(bird, 8).gen_beams(bird))
                     full_beam_cooldown = 300
 
@@ -1042,6 +1046,7 @@ def main():
                 # スキルを所持していて、かつクールダウンが0の場合のみ発動
                 if player_skills[3]:
                     if tmr % 4 == 0:  # 4フレームに1発発射
+                        laser_sound.play()
                         beams.add(Beam(bird, stage))
                         score.value -= 1  # スコアを1消費
 
@@ -1153,14 +1158,15 @@ def main():
             items.add(Item())
             
         
-        if boss is None:
+        if boss is None and stage != 5: # ステージ5はBossが頻繁に出るので、スポーン条件から外す
            spawn_enemy(stage, tmr, emys)
 
         if tmr%260 == 0:
             items.add(Item())
 
         if bird.rect.left <= 0:
-            stage_clear = True
+            if stage != 5:  # stage 5 はボス撃破のみでクリア
+                stage_clear = True
         
         # tmrが500になったらボスを1体だけ生成
         if stage == 2 and tmr == 500 and boss is None:
@@ -1380,7 +1386,7 @@ def main():
                 else:
                     current_choices = []
         
-        if stage != 3 and tmr % 1800 == 0 and tmr > 0:  # ステージ3では時間制限でのクリアは無効
+        if stage not in (3, 5) and tmr % 1800 == 0 and tmr > 0:  # stage 3/5 では時間制限クリアを無効
             stage_clear = True
                     
         if emy.hp <= 0:
