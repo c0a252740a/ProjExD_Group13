@@ -13,6 +13,7 @@ pg.mixer.init()
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
 backgroundImg = ["fig/pg_bg.jpg","fig/nightsky01.png","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.png"] #1,2,3,4,5
+backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.jpg"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -194,6 +195,41 @@ class Bomb(pg.sprite.Sprite):
             # if not tate: self.vy *= -1
         #     self.rect.move_ip(self.vx, self.vy)
         # screen.blit(self.image, self.rect)
+
+
+class Fire(pg.sprite.Sprite):
+    """
+    炎の玉に関するクラス
+    """
+    imgs = pg.image.load(f"fig/fire.png")
+
+    def __init__(self, emy: "Enemy", bird: Bird):
+        """
+        炎の玉Surfaceを生成する
+        引数1 emy：爆弾を投下する敵機
+        引数2 bird：攻撃対象のこうかとん
+        """
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        # 爆弾を投下するemyから見た攻撃対象のbirdの方向を計算
+        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)  
+        self.rect.centerx = emy.rect.centerx
+        self.rect.centery = emy.rect.centery+emy.rect.height//2
+        self.speed = 6
+        self.state = "active"
+
+    def update(self):
+        """
+        火の玉を前進させ、完全に画面外に出たら消去する
+        """
+        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+        if (self.rect.right < 0 or            # 左側の画面外
+            self.rect.left > 1100 or          # 右側の画面外
+            self.rect.bottom < 0 or           # 上側の画面外
+            self.rect.top > 650):             # 下側の画面外
+            
+            self.kill()
 
 
 class Beam(pg.sprite.Sprite):
@@ -518,6 +554,94 @@ class Stage2_Boss(pg.sprite.Sprite):
         if self.rect.top < 0 or self.rect.bottom > HEIGHT:
             self.vy *= -1
 
+class Enemy4(pg.sprite.Sprite):
+    """
+    敵機に関するクラス
+    """
+    imgs = pg.image.load(f"fig/enemy_4.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.hp = 1
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
+class Enemy4_1(pg.sprite.Sprite):
+    """
+    敵機に関するクラス
+    """
+    imgs = pg.image.load(f"fig/moai.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.bottom = HEIGHT + 40  # 底面を少し下げる（以前の調整値）
+        self.rect.left = WIDTH
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(30, 300)  # 爆弾投下インターバル
+        self.hp = 3
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
+class Enemy4_boss(pg.sprite.Sprite):
+    """
+    4ステージ目のボスに関するクラス
+    """
+    imgs = pg.image.load(f"fig/dragon.png")
+    
+    def __init__(self):
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + self.rect.width // 2, HEIGHT // 2
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH - 300, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
+        self.interval = random.randint(30, 100)  # 爆弾投下インターバル
+        self.hp = 30
+
+    def update(self):
+        """
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
+        引数 screen：画面Surface
+        """
+        if self.rect.centerx < self.bound:
+            self.vx = 0
+            self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
+
+
 def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     """
     ステージごとの条件に応じて敵機をスポーンさせる。
@@ -559,6 +683,13 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     elif stage == 3:
         if tmr % 100 == 0:  # ステージ3では敵が少なめ
             emys.add(Enemy())
+    elif stage == 4:
+        if tmr % interval == 0:
+            emys.add(Enemy4())
+        if tmr % 300 == 0:
+            emys.add(Enemy4_1())
+        if tmr % 500 == 0 and tmr > 0:
+            emys.add(Enemy4_boss())
 
 
 class Boss(pg.sprite.Sprite):
@@ -582,7 +713,7 @@ class Boss(pg.sprite.Sprite):
         # ボス強化: 弾幕を増やし、発射間隔を短く、HPを大幅に増加
         self.interval = random.randint(15, 30)  # 発射間隔を短くする
         self.barrage = 3  # 1回の発射で投下する爆弾数
-        self.hp = 200
+        self.hp = 30
         
     def update(self):
         # 画面外から定位置まで移動し、到達後は停止
@@ -591,6 +722,37 @@ class Boss(pg.sprite.Sprite):
             if self.rect.right <= self.target_right:
                 self.rect.right = self.target_right
                 self.entering = False
+
+
+class Full_beam:
+    """
+    複数方向に放つビームに関するクラス
+    """
+    def __init__(self, bird: Bird, num: int):
+        self.bird = bird
+        self.num = num
+
+    def gen_beams(self, bird: Bird):
+        """
+        ビームを全方向（360度）に等間隔で放つ
+        引数 bird：ビームを放つこうかとん
+        """
+        beams = []
+        
+        # 1本だけの場合は正面（0度）に撃つ
+        if self.num == 1:
+            angles = [0]
+        else:
+            # 360度を指定した本数(self.num)で等分割する
+            step = 360 / self.num
+            # 各ビームの角度を計算してリストにする（例: 4本なら [0.0, 90.0, 180.0, 270.0]）
+            angles = [step * i for i in range(self.num)]
+            
+        for i in range(self.num):
+            angle0 = angles[i]
+            beams.append(Beam(bird, angle0))
+            
+        return beams
 
 
 class Score:
@@ -655,7 +817,7 @@ def main():
     bgm_playing = False
     score = Score()
 
-    bird = Bird(3, (900, 400))
+    bird = Bird(3, (400, 400))
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
     bits = pg.sprite.Group()
@@ -672,6 +834,7 @@ def main():
     boss = None
 
     stage = 1
+    current_stage = 0
     scroll = 2
     stage_clear = False
     stage_title_life = 0
@@ -691,18 +854,24 @@ def main():
     stage_clear = False
     stage_title_life = 60
     bg_x = 0
+    player_skills = {
+        1: False,  # 全方向ビーム
+        2: False,  # スピードアップ（例）
+        3: False,  # 連射（例）
+        4: False,  # バリア（例）
+    }
+
+    current_choices = []
+    full_beam_cooldown = 0
+
     tmr = 0
     has_rapid_skill = False
 
     stage_tmr = 0
     clock = pg.time.Clock()
 
-    pg.mixer.music.play(-1)
-    bgm_files = ["soundbgm1.mp3", "stage2_music.mp3"] 
+    bgm_files = ["fig/soundbgm1.mp3", "fig/stage2_music.mp3","fig/進軍.mp3","fig/soundbgm1.mp3","fig/soundbgm1.mp3"] 
     #ステージのBGMを再生
-    pg.mixer.music.load(bgm_files[stage-1])
-    pg.mixer.music.play(-1)
-    pg.mixer.music.set_volume(0.7) 
 
     while True: 
         key_lst = pg.key.get_pressed()
@@ -717,96 +886,120 @@ def main():
 
             
             
-            if stage_clear and event.type == pg.KEYDOWN:
-                # 簡易コマンド: Q=Enable Bit+続行, E=SpeedUp, F=RapidFire
-                if event.key == pg.K_q:
-                    if stage >= 5:
-                        return 0
-                    # Qでビットを有効化（まだ無ければ追加）
-                    if not bit_enabled:
-                        bit_enabled = True
-                        bit = Bit(delay_frames=16)
-                        bit.rect.center = bird.rect.center
-                        bits.add(bit)
-                    score.value += 50
-                    if boss:
-                        boss.kill()
-                        boss = None
-                    stage += 1
-                    tmr = 0
-                    stage_tmr = 0
-                    stage_clear = False
-                    stage_title_life = 60
-                    bird.rect.center = (900, 400)
-                    for emy in emys:
-                        emy.rect.x -= 120
-                    for item in items:
-                        item.rect.x -= 120
-                    bg_x = 0
-                    continue
+            # if stage_clear and event.type == pg.KEYDOWN:
+            #     # 簡易コマンド: Q=Enable Bit+続行, E=SpeedUp, F=RapidFire
+            #     if event.key == pg.K_q:
+            #         if stage >= 5:
+            #             return 0
+            #         # Qでビットを有効化（まだ無ければ追加）
+            #         if not bit_enabled:
+            #             bit_enabled = True
+            #             bit = Bit(delay_frames=16)
+            #             bit.rect.center = bird.rect.center
+            #             bits.add(bit)
+            #         score.value += 50
+            #         if boss:
+            #             boss.kill()
+            #             boss = None
+            #         stage += 1
+            #         tmr = 0
+            #         stage_tmr = 0
+            #         stage_clear = False
+            #         stage_title_life = 60
+            #         bird.rect.center = (900, 400)
+            #         for emy in emys:
+            #             emy.rect.x -= 120
+            #         for item in items:
+            #             item.rect.x -= 120
+            #         bg_x = 0
+            #         continue
 
-                elif event.key == pg.K_f:
-                    has_rapid_skill = True
-                    score.value += 50
-                    if boss:
-                        boss.kill()
-                        boss = None
-                    stage += 1
-                    stage_clear = False
-                    stage_title_life = 60
-                    bird.rect.center = (900, 400)
-                    for emy in emys: emy.rect.x -= 120
-                    for item in items: item.rect.x -= 120
-                    scroll = 2 
-                    tmr = 0     
-                    stage_tmr = 0
-                    bg_x = 0
-                    continue
+            #     elif event.key == pg.K_f:
+            #         has_rapid_skill = True
+            #         score.value += 50
+            #         if boss:
+            #             boss.kill()
+            #             boss = None
+            #         stage += 1
+            #         stage_clear = False
+            #         stage_title_life = 60
+            #         bird.rect.center = (900, 400)
+            #         for emy in emys: emy.rect.x -= 120
+            #         for item in items: item.rect.x -= 120
+            #         scroll = 2 
+            #         tmr = 0     
+            #         stage_tmr = 0
+            #         bg_x = 0
+            #         continue
                 
-                elif event.key == pg.K_f:  # ★追加：Eキーなら連射スキル解放して次へ
-                    has_rapid_skill = True  # 連射スキルを使えるようにする
-                    score.value += 50
-                    if boss:  # Bossを倒す処理
-                        boss.kill()  # Bossを消す
-                        boss = None  # Bossの参照をNoneにする
-                    stage += 1
-                    stage_clear = False
-                    stage_title_life = 60
-                    bird.rect.center = (900, 400)
-                    for emy in emys: emy.rect.x -= 120
-                    for item in items: item.rect.x -= 120
-                    scroll = 2 
-                    tmr = 0     
-                    stage_tmr = 0
-                    bg_x = 0
-                    continue
+            #     elif event.key == pg.K_f:  # ★追加：Eキーなら連射スキル解放して次へ
+            #         has_rapid_skill = True  # 連射スキルを使えるようにする
+            #         score.value += 50
+            #         if boss:  # Bossを倒す処理
+            #             boss.kill()  # Bossを消す
+            #             boss = None  # Bossの参照をNoneにする
+            #         stage += 1
+            #         stage_clear = False
+            #         stage_title_life = 60
+            #         bird.rect.center = (900, 400)
+            #         for emy in emys: emy.rect.x -= 120
+            #         for item in items: item.rect.x -= 120
+            #         scroll = 2 
+            #         tmr = 0     
+            #         stage_tmr = 0
+            #         bg_x = 0
+            #         continue
 
 
-            if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_e:
-                if stage >= 5:
-                    return 0
-                # speedup
-                bird.speedchg(20) # こうかとんの移動速度を20に変更
-                score.value += 50
+            # if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_e:
+            #     if stage >= 5:
+            #         return 0
+            #     # speedup
+            #     bird.speedchg(20) # こうかとんの移動速度を20に変更
+
+                
+            if stage_clear and event.type == pg.KEYDOWN and event.key in [pg.K_1, pg.K_2, pg.K_3]:
+                # 押されたキーに応じて、選択肢リスト（current_choices）の何番目か特定する
+                if event.key == pg.K_1:
+                    chosen_index = 0
+                elif event.key == pg.K_2:
+                    chosen_index = 1
+                elif event.key == pg.K_3:
+                    chosen_index = 2
+                
+                # 実際に選ばれたスキルの本来の番号（1〜5）を取得する
+                selected_skill_num = current_choices[chosen_index]
+                
+                # --- 変更点5：選ばれたスキルのフラグをTrueにする ---
+                player_skills[selected_skill_num] = True
+                
+                # ※ デバッグ用：何番のスキルが適用されたかコンソールに出す
+                print(f"Skill {selected_skill_num} Activated!")
+                
+                # 次のステージへ行くための共通処理
                 stage += 1
                 stage_clear = False
-                stage_title_life = 60
-                bird.rect.center = (900, 400)
-                for emy in emys:
-                    emy.rect.x -= 120
-                for item in items:
-                    item.rect.x -= 120
-                bg_x = 0
-                
-                stage_title_life = 60
+                tmr = 0
                 stage_tmr = 0
-                if boss:  # Bossを倒す処理
-                    boss.kill()  # Bossを消す
-                    boss = None  # Bossの参照をNoneにする
+                stage_title_life = 60
+                bg_x = 0
+
+                # プレイヤーのステータス更新
+                life.num = min(life.num + 1, 5)
+                score.value += 50
+                
+                # ステージ数に応じたプレイヤーの初期位置設定
                 if stage == 3:
                     bird.rect.center = (200, 400)
                 else:
                     bird.rect.center = (900, 400)
+                
+                # ボスが存在していれば削除する
+                if boss:
+                    boss.kill()
+                    boss = None
+                
+                # スプライトグループをすべてクリア（1回にまとめました）
                 emys.empty()
                 bombs.empty()
                 beams.empty()
@@ -824,12 +1017,33 @@ def main():
                     beams.add(*NeoBeam(bird, neo_beam_num, stage).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
                 else:
                     beams.add(Beam(bird,stage))  # スペースキーでビームを放つ
-                    beams.add(Beam(bird, stage))  # スペースキーでビームを放つ
                 if bit_enabled:
                     for bit in bits:
                         # Bit は常に右方向にビームを撃つようにする
                         dummy = SimpleNamespace(dire=(1, 0), rect=bit.rect)
                         beams.add(Beam(dummy, stage))
+                    beams.add(Beam(bird))  # スペースキーでビームを放つ
+            
+            if event.type == pg.KEYDOWN and event.key == pg.K_r:
+                # スキルを所持していて、かつクールダウンが0の場合のみ発動
+                if player_skills[1] and full_beam_cooldown == 0:
+                    beams.add(*Full_beam(bird, 8).gen_beams(bird))
+                    full_beam_cooldown = 300
+
+            if event.type == pg.KEYDOWN and event.key == pg.K_e:
+                # スキルを所持していて、かつクールダウンが0の場合のみ発動
+                if player_skills[2]:
+                    if stage >= 5:
+                        return 0
+                        #speedup
+                    bird.speedchg(20)
+            
+            if event.type == pg.KEYDOWN and event.key == pg.K_e:
+                # スキルを所持していて、かつクールダウンが0の場合のみ発動
+                if player_skills[3]:
+                    if tmr % 4 == 0:  # 4フレームに1発発射
+                        beams.add(Beam(bird, stage))
+                        score.value -= 1  # スコアを1消費
 
         bg_img = bg_imgs[(stage - 1) % len(bg_imgs)]
         # ステージ3のときだけBGMを再生し、離脱時に停止する
@@ -856,34 +1070,63 @@ def main():
             overlay = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             screen.blit(overlay, (0, 0))
+            
             font = pg.font.Font(None, 54)
-            if stage == 1:
-                lines = [
-                    f"STAGE {stage} CLEAR",
-                    "Press Q to heal or ",
-                    "Press F to Hyper Rapid Fire then continue",
-                ]
-            elif stage < 5:
-                lines = [
-                f"STAGE {stage} CLEAR",
-                "Press Q to heal or Press E to speed up then continue",
-                ]
-            else:
-                lines = [
-                f"STAGE {stage} CLEAR",
-                "Press Q to end the game",
-                ]
-            if stage == 4:
-                Beam.image = pg.transform.rotozoom(pg.image.load("fig/beam05.png"), 0, 1.5)  # ステージ4でビームのサイズを大きくする
+            # if stage == 1:
+            #     lines = [
+            #         f"STAGE {stage} CLEAR",
+            #         "Press Q to heal or ",
+            #         "Press F to Hyper Rapid Fire then continue",
+            #     ]
+            # elif stage < 5:
+            #     lines = [
+            #     f"STAGE {stage} CLEAR",
+            #     "Press Q to heal or Press E to speed up then continue",
+            #     ]
+            # else:
+            #     lines = [
+            #     f"STAGE {stage} CLEAR",
+            #     "Press Q to end the game",
+            #     ]
+            # if stage == 4:
+            #     Beam.image = pg.transform.rotozoom(pg.image.load("fig/beam05.png"), 0, 1.5)  # ステージ4でビームのサイズを大きくする
 
+            # for i, text in enumerate(lines):
+            #     line_surf = font.render(text, True, (255, 255, 255))
+            #     line_rect = line_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60 + i * 45))
+            #     screen.blit(line_surf, line_rect)
+
+            # hint = font.render("Press Q to enable Bit, E to speed up, F for Rapid Fire then continue", True, (255, 255, 255))
+            # hint_rect = hint.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 120))
+            # screen.blit(hint, hint_rect)
+            font_sub = pg.font.Font(None, 40)
+            
+            # --- 変更点1：テキスト表示の変更 ---
+            lines = [
+                f"STAGE {stage} CLEAR",
+                "Select 1 Skill to Upgrade!",
+            ]
             for i, text in enumerate(lines):
-                line_surf = font.render(text, True, (255, 255, 255))
-                line_rect = line_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60 + i * 45))
-                screen.blit(line_surf, line_rect)
-
-            hint = font.render("Press Q to enable Bit, E to speed up, F for Rapid Fire then continue", True, (255, 255, 255))
-            hint_rect = hint.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 120))
-            screen.blit(hint, hint_rect)
+                img = font.render(text, True, (255, 255, 255))
+                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 150 + i * 50))
+                screen.blit(img, rect)
+            
+            skill_names = {
+                1: "Full Beam (Omnidirectional)",
+                2: "Speed Up (Coming Soon)",
+                3: "連射 (Coming Soon)",
+                4: "Shield (Coming Soon)",
+            }
+            for i, skill_num in enumerate(current_choices):
+                # i は 0, 1, 2 なので、キーの表示は 1, 2, 3 になる
+                skill_text = f"[ {i + 1} ]  {skill_names[skill_num]}"
+                
+                # スキル1だけ完成しているので、1が含まれる選択肢を黄色にする例
+                color = (255, 215, 0) if skill_num == 1 else (150, 150, 150)
+                
+                img = font_sub.render(skill_text, True, color)
+                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+                screen.blit(img, rect)
 
             pg.display.update()
             clock.tick(30)
@@ -938,6 +1181,16 @@ def main():
                 if tmr % emy.interval == 0:
                     bombs.add(Bomb(emy, bird))
 
+            if emy.state == "stop" and tmr % emy.interval == 0:
+                # 2. そのタイミングの中で、ボスか雑魚敵かを分ける
+                if isinstance(emy, Enemy4_boss):
+                    # 4面ボスの場合は Fire だけを1個投下
+                    print("★ボスがFireを撃った瞬間！")
+                    bombs.add(Fire(emy, bird)) 
+                else:
+                    # モアイなどの雑魚敵の場合は Bomb だけを1個投下
+                    bombs.add(Bomb(emy, bird))
+
         for emy in pg.sprite.spritecollide(bird, emys, False):
             emy.hp -= 1
             if emy.hp <= 0:
@@ -962,6 +1215,8 @@ def main():
                 return
 
         for obj in emys:
+            if isinstance(obj, Enemy4_boss):
+                continue
             obj.rect.x -= scroll
         for obj in bombs:
             obj.rect.x -= scroll
@@ -1006,6 +1261,13 @@ def main():
                 if isinstance(emy, EnemyLV5_Boss):
                     score.value += 1000  # ボスを倒したら1000点アップ
                     stage_clear = True  # ボスを倒したらステージクリア
+                    available_skills = [num for num, acquired in player_skills.items() if not acquired]
+                    sample_size = min(3, len(available_skills))
+                    # 3. 抽選して選択肢にセット
+                    if sample_size > 0:
+                        current_choices = random.sample(available_skills, sample_size)
+                    else:
+                        current_choices = []
 
                 if stage == 2:
                     exp_sound.play()
@@ -1019,6 +1281,13 @@ def main():
                 if isinstance(emy, LV1_Boss):
                     score.value += 100  # ボス撃破ボーナス
                     stage_clear = True
+                    available_skills = [num for num, acquired in player_skills.items() if not acquired]
+                    sample_size = min(3, len(available_skills))
+                    # 3. 抽選して選択肢にセット
+                    if sample_size > 0:
+                        current_choices = random.sample(available_skills, sample_size)
+                    else:
+                        current_choices = []
                 else:
                     score.value += 10   # 通常の敵
 
@@ -1074,9 +1343,9 @@ def main():
                     stage_clear = True  
         
         #if tmr % 1800 == 0 and tmr > 0:
-        if tmr % 1800 == 0 and tmr > 0 and stage < 5:
-            if stage != 2 or boss is None:
-                stage_clear = True
+        # if tmr % 1800 == 0 and tmr > 0 and stage < 5:
+        #     if stage != 2 or boss is None:
+        #         stage_clear = True
         bird.update(key_lst, screen, score, stage)
         #if tmr % 1800 == 0 and tmr > 0:
             #stage_clear = True
@@ -1103,9 +1372,48 @@ def main():
         if bird.rect.left <= 0:
             if stage != 3:  # ステージ3ではボス撃墜でクリア
                 stage_clear = True
+                available_skills = [num for num, acquired in player_skills.items() if not acquired]
+                sample_size = min(3, len(available_skills))
+                # 3. 抽選して選択肢にセット
+                if sample_size > 0:
+                    current_choices = random.sample(available_skills, sample_size)
+                else:
+                    current_choices = []
         
         if stage != 3 and tmr % 1800 == 0 and tmr > 0:  # ステージ3では時間制限でのクリアは無効
             stage_clear = True
+                    
+        if emy.hp <= 0:
+            # 敵が倒されたとき、それがボス（Enemy4_boss）だった場合
+            if isinstance(emy, Enemy4_boss):
+                stage_clear = True  # ステージクリアフラグをONにする
+                available_skills = [num for num, acquired in player_skills.items() if not acquired]
+                sample_size = min(3, len(available_skills))
+                # 3. 抽選して選択肢にセット
+                if sample_size > 0:
+                    current_choices = random.sample(available_skills, sample_size)
+                else:
+                    current_choices = []
+
+        if player_skills[1] and full_beam_cooldown > 0:
+            font_cd = pg.font.Font(None, 30)
+            # フレーム数を秒数に変換（60で割る）して、小数点第1位まで表示
+            cd_sec = full_beam_cooldown / 60
+            img_cd = font_cd.render(f"SKILL R CD: {cd_sec:.1f}s", True, (255, 0, 0))
+            screen.blit(img_cd, (20, 100))
+
+        if full_beam_cooldown > 0:
+            full_beam_cooldown -= 1
+        
+        # if tmr % 1800 == 0 and tmr > 0:
+        #     stage_clear = True
+
+        if stage != current_stage:
+            pg.mixer.music.load(bgm_files[stage - 1])  # []の中身を増やす
+            pg.mixer.music.play(-1)
+            pg.mixer.music.set_volume(0.5)
+        
+            current_stage = stage
 
         bird_trail.append(bird.rect.center)
         if len(bird_trail) > TRAIL_MAX:
@@ -1137,6 +1445,7 @@ def main():
 
 if __name__ == "__main__":
     pg.init()
+    pg.mixer.init()
     main()
     try:
         pg.mixer.music.stop()
