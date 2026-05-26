@@ -404,9 +404,9 @@ def main():
     life = Life(5)
     items = pg.sprite.Group()
 
-    beam_sound = pg.mixer.Sound("fig/freesound_community.mp3")
+    beam_sound = pg.mixer.Sound("fig/stage2_beam_sound.mp3")
     beam_sound.set_volume(0.2)
-    exp_sound = pg.mixer.Sound("fig/soundreality.mp3")
+    exp_sound = pg.mixer.Sound("fig/stage2_explosion_sound.mp3")
     exp_sound.set_volume(0.2)
 
     stage = 1
@@ -429,7 +429,7 @@ def main():
                 stage += 1
 
                 if stage == 2:
-                    pg.mixer.music.load(f"fig/music.mp3")
+                    pg.mixer.music.load(f"fig/stage2_music.mp3")
                     pg.mixer.music.set_volume(0.4) #音量調整
                     pg.mixer.music.play(-1) #無限ループ
                 elif stage == 3:
